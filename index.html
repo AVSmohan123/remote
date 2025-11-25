@@ -1,0 +1,202 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>AVS.MOHAN - MQTT Control Panel</title>
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+
+<style>
+body {
+  background: #111;
+  color: white;
+  font-family: Arial;
+  text-align: center;
+}
+.panel {
+  background: #222;
+  margin: 10px;
+  padding: 15px;
+  border-radius: 12px;
+  display: inline-block;
+  width: 260px;
+}
+.btn {
+  width: 90%;
+  padding: 15px;
+  font-size: 20px;
+  border-radius: 10px;
+  border: none;
+  color: white;
+  margin-top: 10px;
+}
+.green { background: green; }
+.red { background: red; }
+.statusBox {
+  font-size: 40px;
+  background: black;
+  color: #00ff00;
+  padding: 10px;
+  font-family: 'Courier New';
+  border-radius: 8px;
+}
+</style>
+</head>
+
+<body>
+<h1>AVS.MOHAN - CONTROL PANEL</h1>
+
+<audio id="alarmSound">
+  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
+</audio>
+
+<script>
+// CONNECT MQTT
+const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+
+// SUBSCRIBE TOPICS
+const subs = [
+  "83095/esp32/status",
+  "83095/project1/MP",
+  "83095/project1/GP",
+  "83095/project11/generator/status",
+  "83095/project1/PW/status",
+  "83095/project1/GM/status",
+  "83095/project1/relay/2",
+  "83095/project1/relay/1"
+];
+
+client.on("connect", () => {
+  subs.forEach(t => client.subscribe(t));
+  console.log("Connected MQTT");
+});
+
+// ALARM FUNCTION
+function playAlarm() {
+  document.getElementById("alarmSound").play();
+}
+
+// MESSAGE HANDLER
+client.on("message", (topic, msg) => {
+  const m = msg.toString();
+
+  if (topic === "83095/project1/MP") {
+    document.getElementById("mpStatus").innerHTML = m;
+    if (m === "NO") playAlarm();
+  }
+
+  if (topic === "83095/project1/GP")
+    document.getElementById("gpStatus").innerHTML = m;
+
+  if (topic === "83095/esp32/status")
+    document.getElementById("espStatus").innerHTML = m;
+
+  if (topic === "83095/project11/generator/status")
+    document.getElementById("genStatus").innerHTML = m;
+
+  if (topic === "83095/project1/PW/status")
+    document.getElementById("pwStatus").innerHTML = m;
+
+  if (topic === "83095/project1/GM/status")
+    document.getElementById("gmStatus").innerHTML = m;
+
+  if (topic === "83095/project1/relay/2")
+    document.getElementById("g1Status").innerHTML = m;
+
+  if (topic === "83095/project1/relay/1")
+    document.getElementById("fanStatus").innerHTML = m;
+});
+
+// PUBLISH FUNCTION
+function send(t, p) {
+  client.publish(t, p, { qos: 1, retain: true });
+}
+</script>
+
+<!-- PANELS -->
+
+<div class="panel">
+  <h2>ESP32 STATUS</h2>
+  <div id="espStatus" class="statusBox">---</div>
+</div>
+
+<div class="panel">
+  <h2>Main Power</h2>
+  <div id="mpStatus" class="statusBox">---</div>
+</div>
+
+<div class="panel">
+  <h2>Generator Power</h2>
+  <div id="gpStatus" class="statusBox">---</div>
+</div>
+
+<div class="panel">
+  <h2>Generator Status</h2>
+  <div id="genStatus" class="statusBox">---</div>
+</div>
+
+<!-- PW ON -->
+<div class="panel">
+  <h2>PW ON</h2>
+  <button class="btn green" onclick="send('AVSmohan/project1/PW','ON')">ON</button>
+</div>
+
+<div class="panel">
+  <h2>Status</h2>
+  <div id="pwStatus" class="statusBox">---</div>
+</div>
+
+<!-- PW OFF -->
+<div class="panel">
+  <h2>PW OFF</h2>
+  <button class="btn red" onclick="send('AVSmohan/project1/PW','OFF')">OFF</button>
+</div>
+
+<!-- GEN MODE -->
+<div class="panel">
+  <h2>GEN MODE ON</h2>
+  <button class="btn green" onclick="send('AVSmohan/project1/GM','ON')">ON</button>
+</div>
+
+<div class="panel">
+  <h2>GEN MODE STATUS</h2>
+  <div id="gmStatus" class="statusBox">---</div>
+</div>
+
+<div class="panel">
+  <h2>GEN MODE OFF</h2>
+  <button class="btn red" onclick="send('AVSmohan/project1/GM','OFF')">OFF</button>
+</div>
+
+<!-- GEN 1 -->
+<div class="panel">
+  <h2>GEN 1 ON</h2>
+  <button class="btn green" onclick="send('AVSmohan/project1/relay/2','ON')">ON</button>
+</div>
+
+<div class="panel">
+  <h2>GEN 1 STATUS</h2>
+  <div id="g1Status" class="statusBox">---</div>
+</div>
+
+<div class="panel">
+  <h2>GEN 1 OFF</h2>
+  <button class="btn red" onclick="send('AVSmohan/project1/relay/2','OFF')">OFF</button>
+</div>
+
+<!-- FAN -->
+<div class="panel">
+  <h2>FAN ON</h2>
+  <button class="btn green" onclick="send('AVSmohan/project1/relay/1','ON')">ON</button>
+</div>
+
+<div class="panel">
+  <h2>FAN STATUS</h2>
+  <div id="fanStatus" class="statusBox">---</div>
+</div>
+
+<div class="panel">
+  <h2>FAN OFF</h2>
+  <button class="btn red" onclick="send('AVSmohan/project1/relay/1','OFF')">OFF</button>
+</div>
+
+</body>
+</html>
