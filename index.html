@@ -278,7 +278,14 @@ document.querySelectorAll('button[data-topic]').forEach(b=> b.addEventListener('
 // MQTT connect
 function connectMQTT(){
   setConn('connecting');
-  client = mqtt.connect('ws://broker.hivemq.com:8000/mqtt', {clientId: 'avs_web_'+Math.random().toString(16).slice(2), keepalive:30, reconnectPeriod:2000});
+  // choose secure websocket when page is served over HTTPS (GitHub Pages)
+  const protocol = (location.protocol === 'https:') ? 'wss' : 'ws';
+  const host = 'broker.hivemq.com';
+  const port = (location.protocol === 'https:') ? 8884 : 8000; // 8884 is HiveMQ WSS port
+  const path = '/mqtt';
+  const url = `${protocol}://${host}:${port}${path}`;
+  // connect
+  client = mqtt.connect(url, { clientId: 'avs_web_'+Math.random().toString(16).slice(2), keepalive:30, reconnectPeriod:2000 });
 
   client.on('connect', ()=>{ setConn('online'); Object.values(topics).forEach(t=>{ try{ client.subscribe(t,{qos:1}); }catch(e){} }); });
   client.on('reconnect', ()=> setConn('connecting'));
