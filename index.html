@@ -1,202 +1,303 @@
-<!DOCTYPE html>
-<html>
+<!doctype html>
+<html lang="en">
 <head>
-<title>AVS.MOHAN - MQTT Control Panel</title>
-<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
-
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>AVS.MOHAN - Aqua Glass Dashboard</title>
 <style>
-body {
-  background: #111;
-  color: white;
-  font-family: Arial;
-  text-align: center;
+:root{
+ --aqua1: rgba(0,255,255,0.20);
+ --aqua2: rgba(0,180,255,0.35);
+ --aqua3: rgba(0,140,255,0.55);
+ --glass-border: rgba(255,255,255,0.25);
+ --bg:#071017;
+ --radius:18px;
+ --digital:'Courier New', monospace;
 }
-.panel {
-  background: #222;
-  margin: 10px;
-  padding: 15px;
-  border-radius: 12px;
-  display: inline-block;
-  width: 260px;
+html,body{margin:0;background:var(--bg);color:white;font-family:Inter}
+.container{padding:20px;max-width:1100px;margin:auto}
+.grid{display:grid;gap:16px}
+.row-1{grid-template-columns:repeat(4,1fr)}
+.row-2{grid-template-columns:repeat(3,1fr)}
+
+/* AQUA GLASS CARD */
+.card{
+ background: linear-gradient(135deg, var(--aqua1), var(--aqua2));
+ backdrop-filter: blur(14px);
+ border: 1px solid var(--glass-border);
+ border-radius: var(--radius);
+ padding:14px;
+ text-align:center;
+ box-shadow:0 8px 28px rgba(0,255,255,0.18);
 }
-.btn {
-  width: 90%;
-  padding: 15px;
-  font-size: 20px;
-  border-radius: 10px;
-  border: none;
-  color: white;
-  margin-top: 10px;
+.card.small{min-height:120px}
+.title{font-size:13px;opacity:0.85;margin-bottom:6px}
+.big-value{font-family:var(--digital);font-size:26px;margin-top:8px}
+.icon{font-size:30px;margin-bottom:6px}
+
+/* BUTTON GLASS EFFECT */
+.glass-btn{
+ background: linear-gradient(135deg, var(--aqua2), var(--aqua3));
+ border:1px solid var(--glass-border);
+ color:white;
+ padding:10px;border-radius:14px;
+ cursor:pointer;font-weight:700;
+ box-shadow:0 4px 16px rgba(0,255,255,0.2);
+ transition:0.2s;
 }
-.green { background: green; }
-.red { background: red; }
-.statusBox {
-  font-size: 40px;
-  background: black;
-  color: #00ff00;
-  padding: 10px;
-  font-family: 'Courier New';
-  border-radius: 8px;
+.glass-btn:hover{
+ transform:scale(1.05);
+ box-shadow:0 6px 20px rgba(0,255,255,0.35);
 }
+.green{background:linear-gradient(135deg,#16f7d1,#0fbca0)}
+.red{background:linear-gradient(135deg,#ff6b6b,#d64545)}
+
+.btn-row{display:flex;gap:10px;justify-content:center}
+.badge{padding:8px 14px;background:#ffffff28;border-radius:12px;font-weight:700;font-size:20px}
+.row-sep{height:2px;background:#ffffff22;margin:18px 0;border-radius:4px}
+
+.hidden{display:none!important;}
 </style>
 </head>
-
 <body>
-<h1>AVS.MOHAN - CONTROL PANEL</h1>
+<div class="container">
 
-<audio id="alarmSound">
-  <source src="https://actions.google.com/sounds/v1/alarms/beep_short.ogg">
-</audio>
+<!-- STICKY HEADER -->
+<div id="header" style="position:fixed;top:0;left:0;width:100%;z-index:999;
+ background:rgba(7,16,23,0.65);backdrop-filter:blur(14px);
+ padding:14px 0;border-bottom:1px solid rgba(255,255,255,0.12);">
+ 
+ <div style="max-width:1100px;margin:auto;display:flex;align-items:center;justify-content:space-between;gap:12px;padding:0 16px;">
 
+   <!-- LEFT SIDE LOGO + BRAND -->
+   <div style="display:flex;align-items:center;gap:14px;">
+     <!-- SVG LOGO -->
+     <svg width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#5eeaff" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round">
+       <path d="M2 12s4-4 10-4 10 4 10 4-4 4-10 4-10-4-10-4z"/>
+       <circle cx="12" cy="12" r="3"/>
+     </svg>
+
+     <!-- BRAND NAME WITH GLOW + UNDERLINE -->
+     <div style="font-size:32px;font-weight:900;position:relative;
+      background:linear-gradient(135deg, var(--aqua2), var(--aqua3));
+      -webkit-background-clip:text;color:transparent;letter-spacing:1px;
+      text-shadow:0 0 14px rgba(0,255,255,0.55);">
+        AVS.MOHAN
+        <div style="position:absolute;bottom:-6px;left:0;width:100%;height:3px;
+         background:linear-gradient(90deg, transparent, #4fffee, transparent);
+         box-shadow:0 0 12px #4fffee;border-radius:4px;animation:glowline 2.4s infinite alternate ease-in-out;"></div>
+     </div>
+   </div>
+
+   <!-- RIGHT SIDE CONNECTION DOT -->
+   <div id="conn-indicator" style="display:flex;align-items:center;gap:8px;font-weight:700;">
+     <div id="conn-dot" style="width:14px;height:14px;border-radius:50%;background:red;box-shadow:0 0 10px red;"></div>
+     <div id="conn-text">Connecting...</div>
+   </div>
+
+ </div>
+</div>
+
+<style>
+@keyframes glowline {
+  from { opacity:0.4; box-shadow:0 0 6px #4fffee; }
+  to   { opacity:1; box-shadow:0 0 16px #4fffee; }
+}
+</style>
+
+<!-- SHIFT CONTENT DOWN -->
+<div style="height:110px"></div>
+<div style="height:92px"></div>
+
+<!-- connection indicator -->
+<div style="position:fixed;top:12px;right:18px;padding:8px 12px;border-radius:12px;background:rgba(255,255,255,0.04);backdrop-filter:blur(6px);font-weight:700" id="conn-indicator">Connecting......</div>
+
+<!-- FIRST ROW: ESP32 FEEDBACK (4 topics) -->
+<div class="grid row-1">
+ <div class="card small"><div class="title">ESP32</div><div class="icon" id="esp32-icon">🔌</div><div class="big-value" id="esp32-value">-</div></div>
+ <div class="card small"><div class="title">MAIN POWER</div><div class="icon" id="mp-icon">⚡</div><div class="big-value" id="mp-value">-</div></div>
+ <div class="card small"><div class="title">GEN POWER</div><div class="icon" id="gp-icon">⛽</div><div class="big-value" id="gp-value">-</div></div>
+ <div class="card small"><div class="title">GEN STATUS</div><div class="icon" id="gen-icon">🔁</div><div class="big-value" id="gen-value">-</div></div>
+</div>
+
+<div class="row-sep"></div>
+
+<!-- SECOND ROW: PW -->
+<div class="grid row-2">
+ <div class="card small"><div class="title">PW ON</div><div class="btn-row"><button class="glass-btn green" data-topic="AVSmohan/project1/PW" data-payload="ON">🔌 ON</button></div></div>
+ <div class="card small"><div class="title">PW STATUS</div><div class="badge" id="pw-status">-</div></div>
+ <div class="card small"><div class="title">PW OFF</div><div class="btn-row"><button class="glass-btn red" data-topic="AVSmohan/project1/PW" data-payload="OFF">⛔ OFF</button></div></div>
+</div>
+
+<div class="row-sep"></div>
+
+<!-- THIRD ROW: GM -->
+<div class="grid row-2">
+ <div class="card small"><div class="title">GM ON</div><div class="btn-row"><button class="glass-btn green" data-topic="AVSmohan/project1/GM" data-payload="ON">⚙️ ON</button></div></div>
+ <div class="card small"><div class="title">GM STATUS</div><div class="badge" id="gm-status">-</div></div>
+ <div class="card small"><div class="title">GM OFF</div><div class="btn-row"><button class="glass-btn red" data-topic="AVSmohan/project1/GM" data-payload="OFF">⛔ OFF</button></div></div>
+</div>
+
+<div class="row-sep"></div>
+
+<!-- FOURTH ROW: GEN1 -->
+<div class="grid row-2">
+ <div class="card small"><div class="title">GEN1 ON</div><div class="btn-row"><button class="glass-btn green" data-topic="AVSmohan/project1/relay/2" data-payload="ON">🔋 ON</button></div></div>
+ <div class="card small"><div class="title">GEN1 STATUS</div><div class="badge" id="gen1-status">-</div></div>
+ <div class="card small"><div class="title">GEN1 OFF</div><div class="btn-row"><button class="glass-btn red" data-topic="AVSmohan/project1/relay/2" data-payload="OFF">⛔ OFF</button></div></div>
+</div>
+
+<div class="row-sep"></div>
+
+<!-- FIFTH ROW: FAN -->
+<div class="grid row-2">
+ <div class="card small"><div class="title">FAN ON</div><div class="btn-row"><button class="glass-btn green" data-topic="AVSmohan/project1/relay/1" data-payload="ON">🌀 ON</button></div></div>
+ <div class="card small"><div class="title">FAN STATUS</div><div class="badge" id="fan-status">-</div></div>
+ <div class="card small"><div class="title">FAN OFF</div><div class="btn-row"><button class="glass-btn red" data-topic="AVSmohan/project1/relay/1" data-payload="OFF">⛔ OFF</button></div></div>
+</div>
+
+</div>
+
+<!-- Alarm banner -->
+<div id="alarmBanner" class="alarm hidden" style="left:auto;right:18px;bottom:18px;max-width:320px;">
+  <div style="font-weight:800">⚠️ MAIN POWER OFF</div>
+  <div style="margin-left:12px;flex:1" id="alarmNote">Click STOP to silence alarm (MP still NO)</div>
+  <div style="margin-left:12px"><button id="stopAlarmBtn" class="glass-btn red">STOP</button></div>
+</div>
+
+<script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
 <script>
-// CONNECT MQTT
-const client = mqtt.connect("wss://broker.hivemq.com:8884/mqtt");
+// topics
+const topics = {
+  esp32: '83095/esp32/status',
+  mp: '83095/project1/MP',
+  gp: '83095/project1/GP',
+  gen: '83095/project11/generator/status',
+  pwStatus: '83095/project1/PW/status',
+  gmStatus: '83095/project1/GM/status',
+  gen1Status: '83095/project1/relay/2',
+  fanStatus: '83095/project1/relay/1'
+};
 
-// SUBSCRIBE TOPICS
-const subs = [
-  "83095/esp32/status",
-  "83095/project1/MP",
-  "83095/project1/GP",
-  "83095/project11/generator/status",
-  "83095/project1/PW/status",
-  "83095/project1/GM/status",
-  "83095/project1/relay/2",
-  "83095/project1/relay/1"
-];
+// UI refs
+const conn = document.getElementById('conn-indicator');
+const esp32Icon = document.getElementById('esp32-icon');
+const esp32Value = document.getElementById('esp32-value');
+const mpIcon = document.getElementById('mp-icon');
+const mpValue = document.getElementById('mp-value');
+const gpIcon = document.getElementById('gp-icon');
+const gpValue = document.getElementById('gp-value');
+const genIcon = document.getElementById('gen-icon');
+const genValue = document.getElementById('gen-value');
+const pwStatus = document.getElementById('pw-status');
+const gmStatus = document.getElementById('gm-status');
+const gen1Status = document.getElementById('gen1-status');
+const fanStatus = document.getElementById('fan-status');
+const alarmBanner = document.getElementById('alarmBanner');
+const stopAlarmBtn = document.getElementById('stopAlarmBtn');
 
-client.on("connect", () => {
-  subs.forEach(t => client.subscribe(t));
-  console.log("Connected MQTT");
-});
+let client = null;
+let lastEsp = 0;
+let alarmSilenced = false;
 
-// ALARM FUNCTION
-function playAlarm() {
-  document.getElementById("alarmSound").play();
-}
-
-// MESSAGE HANDLER
-client.on("message", (topic, msg) => {
-  const m = msg.toString();
-
-  if (topic === "83095/project1/MP") {
-    document.getElementById("mpStatus").innerHTML = m;
-    if (m === "NO") playAlarm();
+function setConn(status){
+  if(status === 'online'){
+    conn.textContent = '🟢 Connected';
+    conn.style.background = 'linear-gradient(90deg, rgba(0,255,200,0.09), rgba(0,180,255,0.06))';
+  } else if(status === 'connecting'){
+    conn.textContent = '🟡 Connecting...';
+    conn.style.background = 'rgba(255,255,255,0.04)';
+  } else {
+    conn.textContent = '🔴 Disconnected';
+    conn.style.background = 'linear-gradient(90deg, rgba(255,100,100,0.06), rgba(255,100,100,0.02))';
   }
-
-  if (topic === "83095/project1/GP")
-    document.getElementById("gpStatus").innerHTML = m;
-
-  if (topic === "83095/esp32/status")
-    document.getElementById("espStatus").innerHTML = m;
-
-  if (topic === "83095/project11/generator/status")
-    document.getElementById("genStatus").innerHTML = m;
-
-  if (topic === "83095/project1/PW/status")
-    document.getElementById("pwStatus").innerHTML = m;
-
-  if (topic === "83095/project1/GM/status")
-    document.getElementById("gmStatus").innerHTML = m;
-
-  if (topic === "83095/project1/relay/2")
-    document.getElementById("g1Status").innerHTML = m;
-
-  if (topic === "83095/project1/relay/1")
-    document.getElementById("fanStatus").innerHTML = m;
-});
-
-// PUBLISH FUNCTION
-function send(t, p) {
-  client.publish(t, p, { qos: 1, retain: true });
 }
+
+function animateIcon(el){
+  el.style.transform = 'scale(1.06)';
+  setTimeout(()=> el.style.transform = '', 600);
+}
+
+function startAlarm(){
+  alarmBanner.classList.remove('hidden');
+  try{ document.getElementById('alarmAudio').play().catch(()=>{}); }catch(e){}
+}
+function stopAlarm(){
+  alarmBanner.classList.add('hidden');
+  try{ document.getElementById('alarmAudio').pause(); }catch(e){}
+}
+
+function showGenError(){
+  // bell popup
+  const bell = document.createElement('div');
+  bell.style.position = 'fixed'; bell.style.right = '18px'; bell.style.bottom = '80px';
+  bell.style.background = 'linear-gradient(135deg,#ff6b6b,#ff4444)'; bell.style.color = 'white'; bell.style.padding='10px 14px';
+  bell.style.borderRadius='12px'; bell.style.fontWeight='800'; bell.style.boxShadow='0 8px 30px rgba(255,0,0,0.18)';
+  bell.textContent = '🔔 Generator ERROR';
+  document.body.appendChild(bell);
+  setTimeout(()=> bell.remove(),4000);
+  if(navigator.vibrate) navigator.vibrate([200,100,200]);
+}
+
+function handleMessage(topic, msg){
+  // ESP32
+  if(topic === topics.esp32){
+    esp32Value.textContent = msg; lastEsp = Date.now(); animateIcon(esp32Icon); return;
+  }
+  // MP
+  if(topic === topics.mp){
+    mpValue.textContent = msg;
+    if(String(msg).trim().toUpperCase() === 'YES'){
+      mpIcon.style.opacity = 1; mpIcon.style.filter = 'drop-shadow(0 8px 18px rgba(0,255,200,0.12))';
+      stopAlarm(); alarmSilenced = false;
+    } else {
+      mpIcon.style.opacity = 1; mpIcon.style.filter = 'drop-shadow(0 8px 18px rgba(255,80,80,0.12))';
+      if(!alarmSilenced) startAlarm();
+    }
+    return;
+  }
+  // GP
+  if(topic === topics.gp){ gpValue.textContent = msg; return; }
+  // GEN status
+  if(topic === topics.gen){ genValue.textContent = msg; const low = String(msg).toLowerCase(); if(low === 'running'){ genIcon.style.transform = 'rotate(0deg)'; genIcon.style.transition='transform 0.8s linear'; genIcon.style.animation = 'spin 1s linear infinite'; } else { genIcon.style.animation=''; if(low==='error'){ showGenError(); genIcon.style.transform='scale(1.04)'; } } return; }
+
+  if(topic === topics.pwStatus) pwStatus.textContent = msg;
+  if(topic === topics.gmStatus) gmStatus.textContent = msg;
+  if(topic === topics.gen1Status) gen1Status.textContent = msg;
+  if(topic === topics.fanStatus) fanStatus.textContent = msg;
+}
+
+// publish helper
+function publish(topic,payload){ if(!client || !client.connected) return alert('Not connected to MQTT broker'); client.publish(topic,String(payload),{qos:1,retain:true}); }
+
+stopAlarmBtn.addEventListener('click', ()=>{ alarmSilenced = true; stopAlarm(); });
+
+// wire buttons
+document.querySelectorAll('button[data-topic]').forEach(b=> b.addEventListener('click', ()=> publish(b.dataset.topic,b.dataset.payload)) );
+
+// MQTT connect
+function connectMQTT(){
+  setConn('connecting');
+  client = mqtt.connect('ws://broker.hivemq.com:8000/mqtt', {clientId: 'avs_web_'+Math.random().toString(16).slice(2), keepalive:30, reconnectPeriod:2000});
+
+  client.on('connect', ()=>{ setConn('online'); Object.values(topics).forEach(t=>{ try{ client.subscribe(t,{qos:1}); }catch(e){} }); });
+  client.on('reconnect', ()=> setConn('connecting'));
+  client.on('close', ()=> setConn('disconnected'));
+  client.on('offline', ()=> setConn('disconnected'));
+  client.on('error', (e)=>{ console.warn('MQTT error',e); });
+  client.on('message', (t,m)=> handleMessage(t,m.toString()));
+}
+
+// watchdog for esp32 offline
+setInterval(()=>{ if(lastEsp && Date.now()-lastEsp>5000){ esp32Value.textContent='OFFLINE'; esp32Icon.style.transform='scale(1.02)'; } },1000);
+
+// auto start
+window.addEventListener('load', ()=>{ connectMQTT(); setConn('connecting'); });
+
 </script>
 
-<!-- PANELS -->
-
-<div class="panel">
-  <h2>ESP32 STATUS</h2>
-  <div id="espStatus" class="statusBox">---</div>
-</div>
-
-<div class="panel">
-  <h2>Main Power</h2>
-  <div id="mpStatus" class="statusBox">---</div>
-</div>
-
-<div class="panel">
-  <h2>Generator Power</h2>
-  <div id="gpStatus" class="statusBox">---</div>
-</div>
-
-<div class="panel">
-  <h2>Generator Status</h2>
-  <div id="genStatus" class="statusBox">---</div>
-</div>
-
-<!-- PW ON -->
-<div class="panel">
-  <h2>PW ON</h2>
-  <button class="btn green" onclick="send('AVSmohan/project1/PW','ON')">ON</button>
-</div>
-
-<div class="panel">
-  <h2>Status</h2>
-  <div id="pwStatus" class="statusBox">---</div>
-</div>
-
-<!-- PW OFF -->
-<div class="panel">
-  <h2>PW OFF</h2>
-  <button class="btn red" onclick="send('AVSmohan/project1/PW','OFF')">OFF</button>
-</div>
-
-<!-- GEN MODE -->
-<div class="panel">
-  <h2>GEN MODE ON</h2>
-  <button class="btn green" onclick="send('AVSmohan/project1/GM','ON')">ON</button>
-</div>
-
-<div class="panel">
-  <h2>GEN MODE STATUS</h2>
-  <div id="gmStatus" class="statusBox">---</div>
-</div>
-
-<div class="panel">
-  <h2>GEN MODE OFF</h2>
-  <button class="btn red" onclick="send('AVSmohan/project1/GM','OFF')">OFF</button>
-</div>
-
-<!-- GEN 1 -->
-<div class="panel">
-  <h2>GEN 1 ON</h2>
-  <button class="btn green" onclick="send('AVSmohan/project1/relay/2','ON')">ON</button>
-</div>
-
-<div class="panel">
-  <h2>GEN 1 STATUS</h2>
-  <div id="g1Status" class="statusBox">---</div>
-</div>
-
-<div class="panel">
-  <h2>GEN 1 OFF</h2>
-  <button class="btn red" onclick="send('AVSmohan/project1/relay/2','OFF')">OFF</button>
-</div>
-
-<!-- FAN -->
-<div class="panel">
-  <h2>FAN ON</h2>
-  <button class="btn green" onclick="send('AVSmohan/project1/relay/1','ON')">ON</button>
-</div>
-
-<div class="panel">
-  <h2>FAN STATUS</h2>
-  <div id="fanStatus" class="statusBox">---</div>
-</div>
-
-<div class="panel">
-  <h2>FAN OFF</h2>
-  <button class="btn red" onclick="send('AVSmohan/project1/relay/1','OFF')">OFF</button>
-</div>
+<!-- small hidden audio element for alarm (base64 silent fallback if blocked) -->
+<audio id="alarmAudio" loop src="data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAESsAACJWAAACABAAZGF0YQAAAAA="></audio>
 
 </body>
 </html>
